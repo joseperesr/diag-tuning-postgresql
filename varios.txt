@@ -194,11 +194,9 @@ create table diag_tablas_part(
 );
 
 
-github:   
 joseperesr
 KARELlucia.123gh
 
-token:
 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
 
 git config --global user.name "joseperesr"
