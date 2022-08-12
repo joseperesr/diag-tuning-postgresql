@@ -1,0 +1,28 @@
+{
+    "server": {
+        "architec": "64bit",
+        "machine": "x86_64",
+        "systemName": "Linux",
+        "osVersion": "#1 SMP Debian 5.10.127-2 (2022-07-23)",
+        "osRelease": "5.10.0-16-amd64",
+        "node": "agetic14"
+    },
+    "cpu": {
+        "logicalCPUs": "16",
+        "physicalCPUs": "8"
+    },
+    "memory": {
+        "total": "15GB",
+        "available": "4GB",
+        "percent": 67.9,
+        "used": "9GB",
+        "free": "901MB",
+        "shared": "1GB"
+    },
+    "disco": {
+        "total": "455GB",
+        "used": "350GB",
+        "free": "81GB",
+        "percent": 81.1
+    }
+}
