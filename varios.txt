@@ -1,0 +1,275 @@
+
+Esquema de Parametrización de BDs PostgreSQL
+--------------------------------------------
+
+Este esquema se divide en tres etapas:
+
+
+1.- Ajuste preliminar de la BD
+2.- Afinamiento incremental de la BD
+3.- Ejercicios de ajuste vía interfaz
+
+============================================
+
+
+1.- AJUSTE PRELIMINAR DE LA BASE DE DATOS
+
+Desarrollo de los siguientes scripts:
+
+Script para la obtención de recursos disponibles del servidor.
+Script para el ajuste de parámetros estándard "ideales" basado en recursos disponibles.
+Script para la recopilación de parámetros del rendimiento "reales" con la instancia arriba.
+Script para el análisis comparativo de parámetros basado en sistemas OLTP.
+
+
+2.- AFINAMIENTO INCREMENTAL DE LA BASE DE DATOS
+
+Desarrollo de los siguientes scripts:
+
+Script para la creación del esquema y repositorio de métricas.
+Scripts para la creación de procedimientos almacenados para la lectura y registro de métricas relacionadas a memoria.
+Scripts para la creación de procedimientos almacenados para la lectura y registro de métricas relacionadas a I/O de disco.
+Scripts para la creación de procedimientos almacenados para la lectura y registro de métricas relacionadas al uso de CPU.
+Scripts para la creación de procedimientos almacenados para la lectura y registro de métricas relacionadas a sesiones de usuario.
+Script para el mantenimiento del esquema y eliminación de métricas obsoletas.
+Script para la creación de job a nivel sistema operativo (crontab).
+-- ejecución periodica de los scripts de lectura y registro de métricas.
+Script para realizar el análisis estadístico de las métricas obtenidas.
+Script para obtener los indicadores (parámetros) que deben ajustarse.
+
+
+3.- EJERCICIOS DE AJUSTE VÍA INTERFAZ
+
+Desarrollo de una App interactiva:
+
+
+Script para definir el contexto de pantalla de la aplicación.
+Script para mostrar los recursos disponibles del servidor, previa invocación al script:
+- Script para la obtención de recursos disponibles del servidor.
+Script para mostrar la grilla de parámetros estándar.
+- Script para el ajuste de parámetros estándard "ideales" basado en recursos disponibles.
+Script para mostrar la grilla con datos en operación:
+- Script para la recopilación de parámetros del rendimiento "reales" con la instancia arriba.
+Script para la interacción de las casillas editables
+Script para la validación de las posibles entradas
+Script para mostrar la grilla con valores "ideales" vs "reales", previa invocación al script:
+- Script para el análisis comparativo de parámetros basado en sistemas OLTP.
+
+
+=======================================
+AFINAMIENTO INCREMENTAL
+
+1. Mostrar indicadores de desempeño (medición de principales variables).
+2. Mostrar los eventos de la BD.
+3. Mostrar las sentencias SQL más consumidoras de recursos ordenadas de 4 formas:
+-SQL ordenadas por llamadas.
+-SQL ordenadas por lecturas.
+-SQL ordenadas por ejecuciones.
+-SQL ordenadas por llamadas analizadas.
+4. Mostrar las estadísticas de la base de datos
+5. Mostar listado de los tablespaces y datafiles ordenados por la suma de lecturas y escrituras.
+6. Las siguientes estadísticas son las de uso de:
+-Effective Cache
+-Shared Buffers
+-WAL Buffers
+-Temporary Files
+-Latches
+
+-Buffer pool, -PGA, -Undo Segments, -Latches, -Shared pool)
+
+7. Por último nos enseña parámetros del postgresql.auto.conf
+
+
+PROCESO DE INSTALACIÓN
+----------------------
+Script para crear el repositorio:
+-Crea el usuario del job de obtención de métricas
+-Crea las tablas
+-Crea los procedimientos almacenados
+-Borra los procedimientos almacenados
+-Borra las tablas
+-Borra el usuario job
+
+
+Informes (como usuario perfstat):
+-spreport.sql: Genera un informe general del rendimiento de la instancia
+-sprepins.sql: Genera un informe para la BD y la instancia indicados
+-sprepsql.sql: Genera un informe para la sentencia SQL que se indique.
+-spauto.sql: Permite automatizar la recolección de estadísticas.
+
+Mantenimiento (como usuario perfstat):
+-sppurge.sql -> Permite borrar un rango de snapshots
+-sptrunc.sql -> Vacía todas las tablas, borrando todos los snapshots
+-spuexp.par -> Es un fichero de parámetros para exportar el usuario perfstat
+
+===========================
+CRITERIOS:
+
+Instancia.-
+
+1. Si no existen muchas conexiones concurrntes, aumentar work_mem.
+2. Si existe la presencia de archivos temporales, entonces aumentar work_mem.
+3. Asignar el doble del tamaño de wal_segment_size al parámetro wal_buffers.
+4. Lectura de tiempos de respuesta de SQL, si son mayores habilitar log_min_duration_statement en 500.
+5. 
+
+Base de Datos.-
+
+1. Lectura de nivel de fragmentación (pg_stat_all_tables), entonces definir horarios de vacuum y analyze.
+2. Si hay mucha escritura en disco, es problable que falten índices. También aumentar log_rotation_size, y reducir log_statement o anularlo.
+3. 
+
+=================================
+IMPLEMENTACIÓN:
+
+create database diagdb;
+\c diagdb
+
+create table diag_instancia (
+	id              serial not null,
+	conexiones		jsonb, -- ==> { locales: num, remotas: num }
+	temp_files		jsonb, -- ==> { temp_file1: tam, temp_file2: tam, etc }
+	sql_pesados		jsonb, -- ==>  { sql1: peso, sql2: peso, etc }
+	wal_size		bigint,
+	estado_id       varchar(10)
+);
+
+create table diag_database (
+	id            serial not null,
+	db_name
+tup_returned             | 15811423337
+tup_fetched              | 109837652
+tup_inserted             | 582575
+tup_updated              | 1406
+tup_deleted              | 570
+
+	estado_id   varchar(10) not null
+);
+
+create table diag_sql (
+	id            serial not null,
+	query
+	calls
+	total_exec_time
+	shared_blks_hit
+	shared_blks_read
+
+
+	estado_id   varchar(10) not null
+);
+
+create table diag_locks(
+	id            serial not null,
+	id_bloqueo
+	tipo
+	tablas   lista  ==> ( tabla1, tabla2, etc )
+
+	estado_id   varchar(10) not null
+);
+
+create table diag_tablas_dead(
+	id            serial not null,
+	tablas_dead   json ==> { tabla1: frag, tabla2: frag, etc}
+	last_vaccum   json ==> { tabla1: timestamp, tabla2: timestamp, etc }
+	last_analyze  json ==> { tabla1: timestamp, tabla2: timestamp, etc }
+
+
+	estado_id   varchar(10) not null
+);
+
+create table diag_tablas_big(
+	id            serial not null,
+	tablas   json  ==> { tabla1: size, tabla2: size, etc }
+	
+	estado_id   varchar(10) not null
+);
+
+create table diag_tablas_part(
+	id            serial not null,
+	tablas   json  ==> { tabla1: { partition1: size, partition2: size, etc}
+						 tabla2: { partition1: size, partition2: size, etc}
+						 etc }
+	
+	estado_id   varchar(10) not null
+);
+
+
+github:   
+joseperesr
+KARELlucia.123gh
+
+token:
+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
+
+git config --global user.name "joseperesr"
+git config --global user.email "jl.perez.ramos@gmail.com"
+git config -l
+
+git init
+git add .
+git commit -m "Creado el proyecto inicial"
+git remote add origin https://github.com/joseperesr/diag-tuning-postgresql.git
+###git remote -v
+git push -u origin master
+
+
+Aplicación en Python para el afinamiento de la configuración de PostgreSQL basado en el hardware del servidor o por tomas de snapshots.
+
+
+===============================================
+CREACIÓN DE LOS PROCEDIMIENTOS ALMACENADOS
+
+create or replace procedure p_diag_scan_instancia()
+language plpgsql
+as $$
+declare
+  v_conn_local  int;
+  v_conn_remoto int;
+begin
+  select count(*) into v_conn_local estrict
+    from pg_stat_activity where client_addr is null;
+  select count(*) into v_conn_remoto estrict
+    from pg_stat_activity where client_addr is not null;
+
+  insert into diag_instancia (conexiones,temp_files,sql_pesados,wal_size,estado_id)
+    (select row_to_json(consulta)::jsonb from v_conn_local as local, v_conn_remoto as remoto) consulta,
+    null, null, null, 'ACTIVO';
+end;
+$$;
+
+insert into diag_instancia (conexiones,temp_files,sql_pesados,wal_size,estado_id)
+  (select row_to_json(consulta)::jsonb from 10 as local, 20 as remoto) consulta,
+  null, null, null, 'ACTIVO';
+
+	id              serial not null,
+	conexiones		jsonb, -- ==> { local: num, remoto: num }
+	temp_files		jsonb, -- ==> { temp_file1: tam, temp_file2: tam, etc }
+	sql_pesados		jsonb, -- ==>  { sql1: peso, sql2: peso, etc }
+	wal_size		bigint,
+	estado_id
+
+create or replace procedure p_diag_scan_instancia()
+language plpgsql
+as $$
+declare
+  suma    bigint := 0;
+  tamanio bigint := 0;
+  cur_tablas CURSOR FOR 
+    SELECT relid
+      FROM pg_catalog.pg_stat_all_tables
+     WHERE schemaname='sre_recaudaciones';
+begin
+  for reg in cur_tablas loop
+    SELECT pg_total_relation_size(reg.relid) into tamanio;
+    suma := suma + tamanio;
+  end loop;
+  raise notice 'Suma: %',pg_size_pretty(suma);
+end;
+$$;
+
+create or replace p_diag_scan_database
+create or replace p_diag_scan_sql
+create or replace p_diag_scan_locks
+create or replace p_diag_scan_dead
+create or replace p_diag_scan_big
+create or replace p_diag_scan_part
